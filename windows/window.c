@@ -54,6 +54,7 @@
 #define IDM_FULLSCREEN	0x0180
 #define IDM_PASTE     0x0190
 #define IDM_SPECIALSEP 0x0200
+#define IDM_SETUPFONT  0x0210
 
 #define IDM_SPECIAL_MIN 0x0400
 #define IDM_SPECIAL_MAX 0x0800
@@ -319,7 +320,9 @@ static void start_backend(void)
 static void close_session(void *ignored_context)
 {
     char morestuff[100];
+#ifndef CLABO
     int i;
+#endif
 
     session_closed = TRUE;
     sprintf(morestuff, "%.70s (inactive)", appname);
@@ -337,7 +340,7 @@ static void close_session(void *ignored_context)
         term_provide_resize_fn(term, NULL, NULL);
 	update_specials_menu(NULL);
     }
-
+#ifndef CLABO
     /*
      * Show the Restart Session menu item. Do a precautionary
      * delete first to ensure we never end up with more than one.
@@ -347,6 +350,7 @@ static void close_session(void *ignored_context)
 	InsertMenu(popup_menus[i].menu, IDM_DUPSESS, MF_BYCOMMAND | MF_ENABLED,
 		   IDM_RESTART, "&Restart Session");
     }
+#endif
 }
 
 int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
@@ -432,7 +436,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	}
 	conf_set_int(conf, CONF_logtype, LGTYP_NONE);
 
-	do_defaults(NULL, conf);
+	do_defaults("putty", conf);
 
 	p = cmdline;
 
@@ -446,15 +450,17 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	 */
 	while (*p && isspace(*p))
 	    p++;
-        if (*p == '&' && p[1] == 'R' &&
+#ifndef CLABO
+	if (*p == '&' && p[1] == 'R' &&
             (!p[2] || p[2] == '@' || p[2] == '&')) {
             /* &R restrict-acl prefix */
             restrict_process_acl();
             restricted_acl = TRUE;
             p += 2;
         }
-
+#endif
 	if (*p == '@') {
+#ifndef CLABO
             /*
              * An initial @ means that the whole of the rest of the
              * command line should be treated as the name of a saved
@@ -471,7 +477,9 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 		cleanup_exit(0);
 	    }
 	    allow_launch = TRUE;    /* allow it to be launched directly */
+#endif
 	} else if (*p == '&') {
+#ifndef CLABO
 	    /*
 	     * An initial & means we've been given a command line
 	     * containing the hex value of a HANDLE for a file
@@ -491,11 +499,13 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 		cleanup_exit(0);
 	    }
 	    allow_launch = TRUE;
+#endif
 	} else if (!*p) {
             /* Do-nothing case for an empty command line - or rather,
              * for a command line that's empty _after_ we strip off
              * the &R prefix. */
-        } else {
+        }
+	else {
 	    /*
 	     * Otherwise, break up the command line and deal with
 	     * it sensibly.
@@ -602,9 +612,15 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	if (loaded_session || got_host)
 	    allow_launch = TRUE;
 
+#ifdef CLABO
+	if ((!allow_launch || !conf_launchable(conf))) {
+		cleanup_exit(0);
+	}
+#else
 	if ((!allow_launch || !conf_launchable(conf)) && !do_config()) {
 	    cleanup_exit(0);
 	}
+#endif
 
 	/*
 	 * Muck about with the hostname in various ways.
@@ -810,7 +826,9 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
     {
 	HMENU m;
 	int j;
+#ifndef CLABO
 	char *str;
+#endif
 
 	popup_menus[SYSMENU].menu = GetSystemMenu(hwnd, FALSE);
 	popup_menus[CTXMENU].menu = CreatePopupMenu();
@@ -824,6 +842,9 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	    m = popup_menus[j].menu;
 
 	    AppendMenu(m, MF_SEPARATOR, 0, 0);
+#ifdef CLABO
+	    AppendMenu(m, MF_ENABLED, IDM_SETUPFONT, "Change F&ont...");
+#else
 	    AppendMenu(m, MF_ENABLED, IDM_SHOWLOG, "&Event Log");
 	    AppendMenu(m, MF_SEPARATOR, 0, 0);
 	    AppendMenu(m, MF_ENABLED, IDM_NEWSESS, "Ne&w Session...");
@@ -831,6 +852,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	    AppendMenu(m, MF_POPUP | MF_ENABLED, (UINT_PTR) savedsess_menu,
 		       "Sa&ved Sessions");
 	    AppendMenu(m, MF_ENABLED, IDM_RECONF, "Chan&ge Settings...");
+#endif
 	    AppendMenu(m, MF_SEPARATOR, 0, 0);
 	    AppendMenu(m, MF_ENABLED, IDM_COPYALL, "C&opy All to Clipboard");
 	    AppendMenu(m, MF_ENABLED, IDM_CLRSB, "C&lear Scrollback");
@@ -839,12 +861,14 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	    AppendMenu(m, (conf_get_int(conf, CONF_resize_action)
 			   == RESIZE_DISABLED) ? MF_GRAYED : MF_ENABLED,
 		       IDM_FULLSCREEN, "&Full Screen");
+#ifndef CLABO
 	    AppendMenu(m, MF_SEPARATOR, 0, 0);
 	    if (has_help())
 		AppendMenu(m, MF_ENABLED, IDM_HELP, "&Help");
 	    str = dupprintf("&About %s", appname);
 	    AppendMenu(m, MF_ENABLED, IDM_ABOUT, str);
 	    sfree(str);
+#endif
 	}
     }
 
@@ -1086,14 +1110,18 @@ void update_specials_menu(void *frontend)
 	    /* XXX does this free up all submenus? */
 	    DeleteMenu(popup_menus[j].menu, (UINT_PTR)specials_menu,
                        MF_BYCOMMAND);
+#ifndef CLABO
 	    DeleteMenu(popup_menus[j].menu, IDM_SPECIALSEP, MF_BYCOMMAND);
+#endif
 	}
 	if (new_menu) {
 	    InsertMenu(popup_menus[j].menu, IDM_SHOWLOG,
 		       MF_BYCOMMAND | MF_POPUP | MF_ENABLED,
 		       (UINT_PTR) new_menu, "S&pecial Command");
+#ifndef CLABO
 	    InsertMenu(popup_menus[j].menu, IDM_SHOWLOG,
 		       MF_BYCOMMAND | MF_SEPARATOR, IDM_SPECIALSEP, 0);
+#endif
 	}
     }
     specials_menu = new_menu;
@@ -1158,6 +1186,9 @@ void set_raw_mouse_mode(void *frontend, int activate)
  */
 void connection_fatal(void *frontend, const char *fmt, ...)
 {
+#ifdef CLABO
+    PostQuitMessage(1);
+#else
     va_list ap;
     char *stuff, morestuff[100];
 
@@ -1173,6 +1204,7 @@ void connection_fatal(void *frontend, const char *fmt, ...)
     else {
 	queue_toplevel_callback(close_session, NULL);
     }
+#endif
 }
 
 /*
@@ -2100,6 +2132,107 @@ static void conf_cache_data(void)
     vtmode = conf_get_int(conf, CONF_vtmode);
 }
 
+#ifdef CLABO
+
+static FontSpec	*sf_fs_org;
+
+static BOOL
+fontspec_equal(FontSpec *fs1, FontSpec *fs2)
+{
+	if (fs1->height != fs2->height || fs1->isbold != fs2->isbold || fs1->charset != fs2->charset)
+		return FALSE;
+
+	if (strcmp(fs1->name, fs2->name) != 0)
+		return FALSE;
+	return TRUE;
+}
+
+static BOOL
+applyFont(HWND hwnd)
+{
+	FontSpec	*fs;
+	LOGFONT	logFont;
+	HDC	hdc;
+	int	point;
+
+	SendMessage(hwnd, WM_CHOOSEFONT_GETLOGFONT, 0, (LPARAM)&logFont);
+
+	hdc = GetDC(0);
+	point = -MulDiv(logFont.lfHeight, 72, GetDeviceCaps(hdc, LOGPIXELSY));
+	ReleaseDC(0, hdc);
+	fs = fontspec_new(logFont.lfFaceName, (logFont.lfWeight == FW_BOLD), point, logFont.lfCharSet);
+
+	if (fontspec_equal(conf_get_fontspec(conf, CONF_font), fs)) {
+		fontspec_free(fs);
+		return FALSE;
+	}
+	else {
+		conf_set_fontspec(conf, CONF_font, fs);
+		InvalidateRect(hwnd, NULL, TRUE);
+		reset_window(2);
+		return TRUE;
+	}
+}
+
+static UINT_PTR CALLBACK
+hookChooseFont(HWND hwnd, UINT uiMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uiMsg == WM_COMMAND && HIWORD(wParam) == CBN_SELCHANGE) {
+		SetTimer(hwnd, 1000, 100, NULL);
+	}
+	if (uiMsg == WM_TIMER && wParam == 1000) {
+		if (!applyFont(hwnd))
+			SetTimer(hwnd, 1000, 100, NULL);
+	}
+	return 0;
+}
+
+static void
+setupFont(HWND hwnd)
+{
+	CHOOSEFONT	cf;
+	LOGFONT		lf;
+	HDC	hdc;
+	FontSpec	*fs = conf_get_fontspec(conf, CONF_font);
+
+	sf_fs_org = fontspec_copy(fs);
+
+	hdc = GetDC(0);
+	lf.lfHeight = -MulDiv(fs->height, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+	ReleaseDC(0, hdc);
+	lf.lfWidth = lf.lfEscapement = lf.lfOrientation = 0;
+	lf.lfItalic = lf.lfUnderline = lf.lfStrikeOut = 0;
+	lf.lfWeight = (fs->isbold ? FW_BOLD : 0);
+	lf.lfCharSet = fs->charset;
+	lf.lfOutPrecision = OUT_DEFAULT_PRECIS;
+	lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
+	lf.lfQuality = DEFAULT_QUALITY;
+	lf.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
+	strncpy(lf.lfFaceName, fs->name, sizeof(lf.lfFaceName) - 1);
+	lf.lfFaceName[sizeof(lf.lfFaceName) - 1] = '\0';
+
+	cf.lStructSize = sizeof(cf);
+	cf.hwndOwner = hwnd;
+	cf.lpfnHook = hookChooseFont;
+	cf.lpLogFont = &lf;
+	cf.Flags = CF_FIXEDPITCHONLY | CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS | CF_NOSCRIPTSEL | CF_NOSIMULATIONS | CF_ENABLEHOOK;
+
+	if (ChooseFont(&cf)) {
+		fs = fontspec_new(lf.lfFaceName, (lf.lfWeight == FW_BOLD), cf.iPointSize / 10, lf.lfCharSet);
+		conf_set_fontspec(conf, CONF_font, fs);
+		fontspec_free(fs);
+		save_settings("putty", conf);
+	}
+	else {
+		conf_set_fontspec(conf, CONF_font, sf_fs_org);
+		InvalidateRect(hwnd, NULL, TRUE);
+		reset_window(2);
+	}
+	fontspec_free(sf_fs_org);
+}
+
+#endif
+
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 				WPARAM wParam, LPARAM lParam)
 {
@@ -2246,6 +2379,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	    }
 
 	    break;
+	  case IDM_SETUPFONT:
+	    {
+		setupFont(hwnd);
+		break;
+	    }
 	  case IDM_RECONF:
 	    {
 		Conf *prev_conf;
@@ -4831,6 +4969,15 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 
     return -1;
 }
+
+#ifdef CLABO
+
+void set_connected(void)
+{
+	SetWindowLongPtr(hwnd, GWLP_USERDATA, 1);
+}
+
+#endif
 
 void set_title(void *frontend, char *title)
 {

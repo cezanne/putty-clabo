@@ -18,6 +18,11 @@
 #define CSIDL_LOCAL_APPDATA 0x001c
 #endif
 
+#ifdef CLABO
+#undef PUTTY_REG_POS
+#define PUTTY_REG_POS "Software\\CodeMayo\\CLBAgent\\PuTTY"
+#endif
+
 static const char *const reg_jumplist_key = PUTTY_REG_POS "\\Jumplist";
 static const char *const reg_jumplist_value = "Recent sessions";
 static const char *const puttystr = PUTTY_REG_POS "\\Sessions";

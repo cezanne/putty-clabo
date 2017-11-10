@@ -10914,6 +10914,13 @@ static void do_ssh2_authconn(Ssh ssh, const unsigned char *in, int inlen,
 	ssh->editing = ssh->echoing = TRUE;
     }
 
+#if CLABO
+    {
+	    extern void set_connected(void);
+	    set_connected();
+    }
+#endif
+
     ssh->state = SSH_STATE_SESSION;
     if (ssh->size_needed)
 	ssh_size(ssh, ssh->term_width, ssh->term_height);

@@ -792,6 +792,9 @@ int verify_ssh_host_key(void *frontend, char *host, int port,
                         const char *keytype, char *keystr, char *fingerprint,
                         void (*callback)(void *ctx, int result), void *ctx)
 {
+#if CLABO
+	return 1;
+#endif
     int ret;
 
     static const char absentmsg[] =
