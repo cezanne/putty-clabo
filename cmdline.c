@@ -328,6 +328,16 @@ int cmdline_process_param(const char *p, char *value,
 	conf_set_int(conf, CONF_ssh_nc_port, atoi(portp + 1));
         sfree(host);
     }
+#ifdef CLABO
+    if (!strcmp(p, "-cmd")) {
+	    RETURN(2);
+	    UNAVAILABLE_IN(TOOLTYPE_FILETRANSFER | TOOLTYPE_NONNETWORK);
+	    SAVEABLE(0);
+
+	    conf_set_str(conf, CONF_remote_cmd, value);
+	    conf_set_str(conf, CONF_remote_cmd2, "");
+    }
+#endif
     if (!strcmp(p, "-m")) {
 	const char *filename;
         char *command;
