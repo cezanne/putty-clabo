@@ -448,7 +448,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	 * prefix for -restrict-acl, all of which are used by PuTTYs
 	 * auto-launching each other via System-menu options.
 	 */
-	while (*p && isspace(*p))
+	while (*p && isspace((unsigned char)*p))
 	    p++;
 #ifndef CLABO
 	if (*p == '&' && p[1] == 'R' &&
@@ -469,7 +469,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
              * launching, via IDM_SAVEDSESS or Windows 7 jump lists.
              */
 	    int i = strlen(p);
-	    while (i > 1 && isspace(p[i - 1]))
+	    while (i > 1 && isspace((unsigned char)p[i - 1]))
 		i--;
 	    p[i] = '\0';
 	    do_defaults(p + 1, conf);
@@ -594,7 +594,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 			 * Otherwise, treat this argument as a host
 			 * name.
 			 */
-			while (*p && !isspace(*p))
+			while (*p && !isspace((unsigned char)*p))
 			    p++;
 			if (*p)
 			    *p++ = '\0';
